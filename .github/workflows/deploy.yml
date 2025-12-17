@@ -5,16 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:  # Permet un déploiement manuel
 
-# Permissions nécessaires pour GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
-
-# Environnement de déploiement (optionnel mais recommandé)
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
 
 jobs:
   build:
@@ -22,33 +16,58 @@ jobs:
     
     steps:
       - name: Checkout du code
-        uses: actions/checkout@v4  # Version mise à jour
+        uses: actions/checkout@v4
         
       - name: Setup Pages
-        uses: actions/configure-pages@v3
+        uses: actions/configure-pages@v4  # Version v4
         
       - name: Construire l'application
         run: |
           echo "🏗️ Construction de l'application..."
-          # Créer le dossier dist s'il n'existe pas
+          
+          # D'abord, voir ce qu'on a
+          echo "📁 Structure du projet :"
+          find . -type f -name "*.html" -o -name "*.css" -o -name "*.js" | head -20
+          
+          # Créer le dossier dist
           mkdir -p dist
           
-          # Copier tous les fichiers du projet dans dist
-          # Cette méthode capture tous les fichiers, où qu'ils soient
-          find . -maxdepth 1 -type f -name "*.html" -o -name "*.css" -o -name "*.js" | xargs -I {} cp {} dist/ 2>/dev/null || true
-          
-          # Copier aussi les fichiers de src/ si ce dossier existe
-          if [ -d "src" ]; then
-            cp -r src/* dist/ 2>/dev/null || true
+          # Méthode SIMPLE : copier TOUT ce qui est nécessaire
+          # 1. Copier index.html s'il est à la racine
+          if [ -f "index.html" ]; then
+            cp index.html dist/
+            echo "✅ index.html copié depuis la racine"
           fi
           
-          echo "📁 Contenu du dossier dist :"
+          # 2. Copier depuis src/ si le dossier existe
+          if [ -d "src" ]; then
+            cp -r src/* dist/ 2>/dev/null || true
+            echo "✅ Fichiers copiés depuis src/"
+          fi
+          
+          # 3. Copier CSS/JS à la racine si présents
+          for file in style.css script.js; do
+            if [ -f "$file" ]; then
+              cp "$file" dist/
+              echo "✅ $file copié depuis la racine"
+            fi
+          done
+          
+          echo "📁 Contenu final de dist/ :"
           ls -la dist/
           
+          # Vérifier qu'on a bien un index.html dans dist
+          if [ ! -f "dist/index.html" ]; then
+            echo "❌ ERREUR : Aucun index.html trouvé pour le déploiement"
+            echo "   Cherché dans :"
+            find . -name "index.html" -type f
+            exit 1
+          fi
+          
       - name: Upload l'artefact
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3  # Version v3
         with:
-          path: 'dist'  # Dossier à déployer
+          path: 'dist'
           
   deploy:
     environment:
@@ -61,4 +80,4 @@ jobs:
     steps:
       - name: Déployer sur GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v3  # Version v3
