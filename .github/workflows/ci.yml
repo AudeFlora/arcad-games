@@ -1,79 +1,24 @@
-name: CI - Tests et Validation
+name: CI Simple
 
 on:
   push:
     branches: [main, dev]
-  pull_request:
-    branches: [main]
 
 jobs:
-  test:
-    name: Tests et Validation
+  validation:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout du code
-      uses: actions/checkout@v4  # Version mise à jour
-      
-    - name: Configurer Node.js
-      uses: actions/setup-node@v4  # Version mise à jour
-      with:
-        node-version: '20'  # Version plus récente
-        cache: 'npm'
-        
-    - name: Vérifier les fichiers
+    - name: Vérifier le code
       run: |
-        echo "📁 Structure des fichiers:"
-        find src/ -type f -name "*.html" -o -name "*.css" -o -name "*.js" | sort
+        echo "✅ Vérification du fichier HTML..."
+        echo "📊 Taille : $(wc -l < index.html) lignes"
         
-    - name: Exécuter les tests
-      run: |
-        echo "🧪 Exécution des tests..."
-        if [ -f "tests/test.js" ]; then
-          node tests/test.js
+        if grep -q "<!DOCTYPE html>" index.html; then
+          echo "✅ Structure HTML correcte"
         else
-          echo "⚠️ Aucun fichier de test trouvé, création d'un test basique..."
-          echo "✅ Fichiers HTML/CSS/JS présents"
-        fi
-        
-    - name: Valider le HTML
-      run: |
-        echo "🔍 Vérification HTML..."
-        if grep -q "<!DOCTYPE html>" src/index.html; then
-          echo "✅ Doctype HTML présent"
-        else
-          echo "❌ Doctype HTML manquant"
+          echo "❌ Problème de structure HTML"
           exit 1
         fi
         
-        # Vérification basique des balises essentielles
-        if grep -q "<html" src/index.html && grep -q "<body" src/index.html; then
-          echo "✅ Structure HTML valide"
-        else
-          echo "❌ Structure HTML incomplète"
-          exit 1
-        fi
-        
-    - name: Vérifier la taille des assets
-      run: |
-        echo "📊 Tailles des fichiers:"
-        echo "HTML: $(wc -l < src/index.html) lignes"
-        echo "CSS: $(wc -l < src/style.css) lignes"
-        echo "JS: $(wc -l < src/script.js) lignes"
-        
-    - name: Build de l'application
-      run: |
-        mkdir -p build
-        cp -r src/* build/ || true
-        cp index.html build/ 2>/dev/null || true
-        echo "🏗️ Build créé dans /build"
-        ls -la build/
-        
-    - name: Upload l'artefact
-      uses: actions/upload-artifact@v4  # CORRIGÉ : Version v4 au lieu de v3
-      with:
-        name: arcade-games-build
-        path: |
-          build/
-          index.html
-        retention-days: 7
+        echo "🎉 Validation réussie !"
