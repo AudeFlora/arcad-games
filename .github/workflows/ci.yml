@@ -9,12 +9,31 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+    - name: Checkout du code
+      uses: actions/checkout@v4
+      
     - name: Vérifier le code
       run: |
-        echo "✅ Vérification du fichier HTML..."
-        echo "📊 Taille : $(wc -l < index.html) lignes"
+        echo "📁 Liste des fichiers :"
+        ls -la
         
-        if grep -q "<!DOCTYPE html>" index.html; then
+        echo ""
+        echo "✅ Vérification du fichier HTML..."
+        
+        # Cherche index.html à la racine OU dans src/
+        if [ -f "index.html" ]; then
+          FILE="index.html"
+        elif [ -f "src/index.html" ]; then
+          FILE="src/index.html"
+        else
+          echo "❌ Fichier index.html introuvable"
+          exit 1
+        fi
+        
+        echo "📊 Fichier trouvé : $FILE"
+        echo "📊 Taille : $(wc -l < $FILE) lignes"
+        
+        if grep -q "<!DOCTYPE html>" "$FILE"; then
           echo "✅ Structure HTML correcte"
         else
           echo "❌ Problème de structure HTML"
