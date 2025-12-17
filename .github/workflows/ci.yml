@@ -1,0 +1,62 @@
+name: CI - Tests et Validation
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Tests et Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout du code
+      uses: actions/checkout@v3
+      
+    - name: Configurer Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Vérifier les fichiers
+      run: |
+        echo "📁 Structure des fichiers:"
+        find src/ -type f -name "*.html" -o -name "*.css" -o -name "*.js" | sort
+        
+    - name: Exécuter les tests
+      run: |
+        echo "🧪 Exécution des tests..."
+        node tests/test.js
+        
+    - name: Valider le HTML (optionnel)
+      run: |
+        echo "🔍 Vérification HTML..."
+        if grep -q "<!DOCTYPE html>" src/index.html; then
+          echo "✅ Doctype HTML présent"
+        else
+          echo "❌ Doctype HTML manquant"
+          exit 1
+        fi
+        
+    - name: Vérifier la taille des assets
+      run: |
+        echo "📊 Tailles des fichiers:"
+        echo "HTML: $(wc -l < src/index.html) lignes"
+        echo "CSS: $(wc -l < src/style.css) lignes"
+        echo "JS: $(wc -l < src/script.js) lignes"
+        
+    - name: Build de l'application
+      run: |
+        mkdir -p build
+        cp -r src/* build/
+        echo "🏗️ Build créé dans /build"
+        ls -la build/
+        
+    - name: Upload l'artefact
+      uses: actions/upload-artifact@v3
+      with:
+        name: arcade-games-build
+        path: build/
+        retention-days: 7
