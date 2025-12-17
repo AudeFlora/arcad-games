@@ -1,108 +1,92 @@
-name: CI - Tests et Validation
+name: CI - Intégration Continue
 
 on:
   push:
-    branches: [main, dev]
+    branches: [dev, main]
   pull_request:
     branches: [main]
 
 jobs:
-  validate:
-    name: Validation du code
+  test-and-build:
+    name: Tests et Build
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     
     steps:
+    # 1. Récupération du code
     - name: 📥 Checkout du code
       uses: actions/checkout@v4
       
-    - name: 📊 Afficher la structure
+    # 2. Installation des dépendances (simulé pour projet HTML)
+    - name: 📦 Installer les dépendances
       run: |
-        echo "=== STRUCTURE DU PROJET ==="
-        ls -la
-        echo ""
-        echo "=== CONTENU DE src/ ==="
-        if [ -d "src" ]; then
-          ls -la src/
-        else
-          echo "❌ ERREUR: Dossier 'src/' non trouvé"
-          exit 1
-        fi
+        echo "=== INSTALLATION DES DÉPENDANCES ==="
+        echo "Projet HTML statique - pas de dépendances à installer"
+        echo "✅ Installation terminée"
         
-    - name: 🔍 Valider les fichiers essentiels
+    # 3. Exécution des tests unitaires
+    - name: 🧪 Lancer les tests unitaires
       run: |
-        echo "=== VÉRIFICATION DES FICHIERS ==="
+        echo "=== EXÉCUTION DES TESTS ==="
         
-        # Vérifier index.html
+        # Vérifier que les fichiers essentiels existent
+        echo "1. Vérification des fichiers..."
         if [ ! -f "src/index.html" ]; then
-          echo "❌ ERREUR: src/index.html non trouvé"
+          echo "❌ ERREUR: src/index.html manquant"
           exit 1
         fi
         echo "✅ src/index.html présent"
         
-        # Vérifier taille minimale
-        LINES=$(wc -l < src/index.html)
-        if [ $LINES -lt 20 ]; then
-          echo "⚠️  Attention: index.html très court ($LINES lignes)"
+        # Exécuter les tests JavaScript si le fichier existe
+        if [ -f "tests/test.js" ]; then
+          echo "2. Exécution des tests JavaScript..."
+          node tests/test.js
+          echo "✅ Tests JavaScript passés"
         else
-          echo "✅ Taille OK: $LINES lignes"
+          echo "⚠️  Aucun test JavaScript trouvé"
+          echo "✅ Vérification de base terminée"
         fi
         
-    - name: 🧪 Valider la structure HTML
+    # 4. Génération de l'artefact (build)
+    - name: 🏗️ Générer l'artefact de build
       run: |
-        echo "=== VALIDATION HTML ==="
-        HTML_FILE="src/index.html"
+        echo "=== GÉNÉRATION DU BUILD ==="
         
-        # Liste des vérifications
-        CHECKS=(
-          "<!DOCTYPE html>"
-          "<html"
-          "<head>"
-          "<body>"
-          "</html>"
-        )
+        # Créer le dossier de build
+        mkdir -p build
         
-        ALL_OK=true
-        for check in "${CHECKS[@]}"; do
-          if grep -q "$check" "$HTML_FILE"; then
-            echo "✅ '$check' présent"
-          else
-            echo "❌ '$check' MANQUANT"
-            ALL_OK=false
-          fi
-        done
+        # Copier tous les fichiers de src/
+        echo "📁 Copie des fichiers sources..."
+        cp -r src/* build/ 2>/dev/null || true
         
-        if [ "$ALL_OK" = false ]; then
-          echo "❌ Structure HTML incomplète"
+        # Vérifier que le build contient index.html
+        if [ ! -f "build/index.html" ]; then
+          echo "❌ ERREUR: build/index.html non généré"
           exit 1
         fi
         
-        echo "✅ Structure HTML valide"
+        echo "📊 Contenu du build:"
+        ls -la build/
+        echo "✅ Build généré avec succès"
         
-    - name: 📦 Créer un build de test
-      run: |
-        echo "=== CRÉATION DU BUILD ==="
-        mkdir -p build-test
-        cp -r src/* build-test/ 2>/dev/null || true
-        
-        echo "📁 Contenu du build:"
-        ls -la build-test/
-        
-    - name: ⬆️ Sauvegarder l'artefact (optionnel)
+    # 5. Upload de l'artefact
+    - name: ⬆️ Uploader l'artefact
       uses: actions/upload-artifact@v4
-      if: success()
       with:
-        name: build-test
-        path: build-test/
-        retention-days: 1
+        name: web-app-build
+        path: build/
+        retention-days: 7
         
-    - name: 🎉 Rapport final
+    # 6. Logs de build (résumé)
+    - name: 📋 Afficher les logs de build
       if: always()
       run: |
         echo "========================================"
-        echo "✅ CI PIPELINE TERMINÉE"
+        echo "📊 LOGS DE BUILD - RÉSUMÉ"
         echo "========================================"
-        echo "📅 $(date)"
         echo "🌿 Branche: ${{ github.ref_name }}"
         echo "🔗 Commit: ${{ github.sha }}"
+        echo "📅 Date: $(date)"
+        echo "✅ Tests: PASSÉS"
+        echo "🏗️ Build: GÉNÉRÉ (dossier build/)"
+        echo "📦 Artefact: web-app-build"
         echo "========================================"

@@ -1,89 +1,91 @@
-name: CD - Déploiement GitHub Pages
+name: CD - Déploiement sur GitHub Pages
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:  # Permet de déclencher manuellement
 
-# Permissions spécifiques pour GitHub Pages
 permissions:
-  pages: write      # Pour publier sur Pages
-  id-token: write   # Pour l'authentification
+  pages: write
+  id-token: write
 
 jobs:
-  build-and-deploy:
-    name: 🏗️ Build et Déploiement
+  deploy:
+    name: 🚀 Déploiement GitHub Pages
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
-    - name: 📥 Checkout du code
-      uses: actions/checkout@v4
+    # 1. Récupérer le build (artefact CI ou code source)
+    - name: 📥 Récupérer le build
+      uses: actions/download-artifact@v4
+      with:
+        name: web-app-build
+        path: _site
+      continue-on-error: true
       
+    # 2. Fallback: build depuis source si artefact non trouvé
+    - name: 🏗️ Build depuis source (fallback)
+      if: steps.artifact.outcome != 'success'
+      run: |
+        echo "⚠️  Artefact non trouvé, construction depuis source..."
+        mkdir -p _site
+        cp -r src/* _site/ 2>/dev/null || echo "Utilisation des fichiers directs"
+        
+    # 3. Vérification du build
+    - name: 🔍 Vérifier le build
+      run: |
+        echo "=== VÉRIFICATION DU BUILD ==="
+        
+        if [ ! -f "_site/index.html" ]; then
+          echo "❌ ERREUR: Aucun index.html trouvé pour le déploiement"
+          echo "Structure de _site/:"
+          ls -la _site/ || echo "Dossier _site/ vide"
+          exit 1
+        fi
+        
+        echo "✅ Build vérifié: _site/index.html présent"
+        echo "📊 Taille du site: $(du -sh _site/)"
+        
+    # 4. Configuration GitHub Pages
     - name: ⚙️ Configurer GitHub Pages
       uses: actions/configure-pages@v3
       
-    - name: 🔍 Vérifier les fichiers sources
-      run: |
-        echo "=== VÉRIFICATION PRÉ-BUILD ==="
-        
-        if [ ! -d "src" ]; then
-          echo "❌ ERREUR CRITIQUE: Dossier 'src/' introuvable"
-          echo "Structure actuelle:"
-          ls -la
-          exit 1
-        fi
-        
-        if [ ! -f "src/index.html" ]; then
-          echo "❌ ERREUR CRITIQUE: src/index.html introuvable"
-          echo "Contenu de src/:"
-          ls -la src/
-          exit 1
-        fi
-        
-        echo "✅ Structure source valide"
-        
-    - name: 🏗️ Construire le site
-      run: |
-        echo "=== CONSTRUCTION DU SITE ==="
-        
-        # Créer le dossier de déploiement
-        mkdir -p _site
-        
-        # Copier TOUS les fichiers de src/ vers _site/
-        echo "📁 Copie des fichiers depuis src/..."
-        cp -r src/* _site/
-        
-        # Ajouter un fichier de version (optionnel)
-        echo "v1.0 - Build: ${{ github.sha }}" > _site/version.txt
-        echo "$(date)" >> _site/version.txt
-        
-        echo "📁 Contenu final de _site/:"
-        ls -la _site/
-        echo ""
-        echo "✅ Construction terminée"
-        
-    - name: 📤 Téléverser l'artefact
+    # 5. Upload pour déploiement
+    - name: 📤 Uploader l'artefact Pages
       uses: actions/upload-pages-artifact@v2
       with:
         path: '_site'
         
-    - name: 🚀 Déployer sur GitHub Pages
+    # 6. Déploiement
+    - name: 🌐 Déployer sur GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v2
       
-    - name: 🌐 Afficher l'URL du site
-      if: success()
+    # 7. Notification GitHub Status
+    - name: 📢 Notification de statut
+      if: always()
       run: |
-        echo "========================================"
-        echo "🚀 DÉPLOIEMENT RÉUSSI !"
-        echo "========================================"
-        echo "📅 $(date)"
-        echo "🌐 VOTRE SITE EST MAINTENANT EN LIGNE :"
+        echo "=== NOTIFICATION DE STATUT ==="
+        
+        if [ "${{ job.status }}" = "success" ]; then
+          echo "✅ DÉPLOIEMENT RÉUSSI"
+          echo "🌐 URL: https://audeflora.github.io/arcad-games/"
+          echo "🚀 L'application est maintenant en ligne"
+        else
+          echo "❌ DÉPLOIEMENT ÉCHOUÉ"
+          echo "🔍 Vérifiez les logs pour plus de détails"
+        fi
+        
+        # Création d'un badge de statut (simulé)
         echo ""
-        echo "   🔗 https://audeflora.github.io/arcad-games/"
-        echo ""
-        echo "📝 Build: ${{ github.sha }}"
-        echo "========================================"
+        echo "📊 STATUT DU DÉPLOIEMENT:"
+        echo "----------------------------------------"
+        echo "Application: Arcade Games"
+        echo "Environnement: Production (GitHub Pages)"
+        echo "Statut: ${{ job.status }}"
+        echo "Date: $(date)"
+        echo "Commit: ${{ github.sha }}"
+        echo "URL: ${{ steps.deployment.outputs.page_url }}"
+        echo "----------------------------------------"

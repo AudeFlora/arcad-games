@@ -6,9 +6,11 @@
   "scripts": {
     "test": "node tests/test.js",
     "start": "npx serve src",
-    "build": "mkdir -p dist && cp -r src/* dist/"
+    "build": "mkdir -p dist && cp -r src/* dist/",
+    "docker:build": "docker build -t arcade-games .",
+    "docker:run": "docker run -p 8080:80 arcade-games"
   },
-  "keywords": ["games", "arcade", "html5"],
+  "keywords": ["games", "arcade", "html5", "devops"],
   "author": "Votre Nom",
   "license": "MIT",
   "devDependencies": {
