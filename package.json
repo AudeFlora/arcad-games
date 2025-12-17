@@ -1,0 +1,17 @@
+{
+  "name": "arcade-games",
+  "version": "1.0.0",
+  "description": "Collection de jeux d'arcade en HTML/CSS/JS",
+  "main": "src/index.html",
+  "scripts": {
+    "test": "node tests/test.js",
+    "start": "npx serve src",
+    "build": "mkdir -p dist && cp -r src/* dist/"
+  },
+  "keywords": ["games", "arcade", "html5"],
+  "author": "Votre Nom",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.0.0"
+  }
+}
