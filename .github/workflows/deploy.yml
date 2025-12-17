@@ -1,64 +1,89 @@
-name: Deploy to GitHub Pages
+name: CD - Déploiement GitHub Pages
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:
+  workflow_dispatch:  # Permet de déclencher manuellement
 
+# Permissions spécifiques pour GitHub Pages
 permissions:
-  pages: write
-  id-token: write
+  pages: write      # Pour publier sur Pages
+  id-token: write   # Pour l'authentification
 
 jobs:
-  deploy:
+  build-and-deploy:
+    name: 🏗️ Build et Déploiement
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
-      - name: Checkout du code
-        uses: actions/checkout@v4
+    - name: 📥 Checkout du code
+      uses: actions/checkout@v4
+      
+    - name: ⚙️ Configurer GitHub Pages
+      uses: actions/configure-pages@v3
+      
+    - name: 🔍 Vérifier les fichiers sources
+      run: |
+        echo "=== VÉRIFICATION PRÉ-BUILD ==="
         
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-        
-      - name: Construire l'application
-        run: |
-          echo "📁 Vérification de la structure..."
+        if [ ! -d "src" ]; then
+          echo "❌ ERREUR CRITIQUE: Dossier 'src/' introuvable"
+          echo "Structure actuelle:"
           ls -la
-          
-          echo ""
-          echo "🏗️ Construction depuis src/..."
-          
-          # Vérifier que src/ existe
-          if [ ! -d "src" ]; then
-            echo "❌ ERREUR CRITIQUE : Dossier 'src/' introuvable !"
-            echo "   Créez un dossier 'src/' et mettez index.html dedans"
-            exit 1
-          fi
-          
-          # Vérifier index.html dans src/
-          if [ ! -f "src/index.html" ]; then
-            echo "❌ ERREUR CRITIQUE : src/index.html introuvable !"
-            echo "   Contenu de src/ :"
-            ls -la src/
-            exit 1
-          fi
-          
-          # Construire dans le dossier par défaut de GitHub Pages
-          mkdir -p _site
-          cp -r src/* _site/
-          
-          echo "✅ Construction réussie !"
-          echo "📁 Contenu de _site/ :"
-          ls -la _site/
-          
-      - name: Upload l'artefact
-        uses: actions/upload-pages-artifact@v2
-        with:
-          path: '_site'
-          
-      - name: Déployer sur GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v2
+          exit 1
+        fi
+        
+        if [ ! -f "src/index.html" ]; then
+          echo "❌ ERREUR CRITIQUE: src/index.html introuvable"
+          echo "Contenu de src/:"
+          ls -la src/
+          exit 1
+        fi
+        
+        echo "✅ Structure source valide"
+        
+    - name: 🏗️ Construire le site
+      run: |
+        echo "=== CONSTRUCTION DU SITE ==="
+        
+        # Créer le dossier de déploiement
+        mkdir -p _site
+        
+        # Copier TOUS les fichiers de src/ vers _site/
+        echo "📁 Copie des fichiers depuis src/..."
+        cp -r src/* _site/
+        
+        # Ajouter un fichier de version (optionnel)
+        echo "v1.0 - Build: ${{ github.sha }}" > _site/version.txt
+        echo "$(date)" >> _site/version.txt
+        
+        echo "📁 Contenu final de _site/:"
+        ls -la _site/
+        echo ""
+        echo "✅ Construction terminée"
+        
+    - name: 📤 Téléverser l'artefact
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: '_site'
+        
+    - name: 🚀 Déployer sur GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v2
+      
+    - name: 🌐 Afficher l'URL du site
+      if: success()
+      run: |
+        echo "========================================"
+        echo "🚀 DÉPLOIEMENT RÉUSSI !"
+        echo "========================================"
+        echo "📅 $(date)"
+        echo "🌐 VOTRE SITE EST MAINTENANT EN LIGNE :"
+        echo ""
+        echo "   🔗 https://audeflora.github.io/arcad-games/"
+        echo ""
+        echo "📝 Build: ${{ github.sha }}"
+        echo "========================================"

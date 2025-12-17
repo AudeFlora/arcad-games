@@ -1,43 +1,108 @@
-name: CI Simple
+name: CI - Tests et Validation
 
 on:
   push:
     branches: [main, dev]
+  pull_request:
+    branches: [main]
 
 jobs:
-  validation:
+  validate:
+    name: Validation du code
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     
     steps:
-    - name: Checkout du code
+    - name: 📥 Checkout du code
       uses: actions/checkout@v4
       
-    - name: Vérifier le code
+    - name: 📊 Afficher la structure
       run: |
-        echo "📁 Liste des fichiers :"
+        echo "=== STRUCTURE DU PROJET ==="
         ls -la
-        
         echo ""
-        echo "✅ Vérification du fichier HTML..."
-        
-        # Cherche index.html à la racine OU dans src/
-        if [ -f "index.html" ]; then
-          FILE="index.html"
-        elif [ -f "src/index.html" ]; then
-          FILE="src/index.html"
+        echo "=== CONTENU DE src/ ==="
+        if [ -d "src" ]; then
+          ls -la src/
         else
-          echo "❌ Fichier index.html introuvable"
+          echo "❌ ERREUR: Dossier 'src/' non trouvé"
           exit 1
         fi
         
-        echo "📊 Fichier trouvé : $FILE"
-        echo "📊 Taille : $(wc -l < $FILE) lignes"
+    - name: 🔍 Valider les fichiers essentiels
+      run: |
+        echo "=== VÉRIFICATION DES FICHIERS ==="
         
-        if grep -q "<!DOCTYPE html>" "$FILE"; then
-          echo "✅ Structure HTML correcte"
+        # Vérifier index.html
+        if [ ! -f "src/index.html" ]; then
+          echo "❌ ERREUR: src/index.html non trouvé"
+          exit 1
+        fi
+        echo "✅ src/index.html présent"
+        
+        # Vérifier taille minimale
+        LINES=$(wc -l < src/index.html)
+        if [ $LINES -lt 20 ]; then
+          echo "⚠️  Attention: index.html très court ($LINES lignes)"
         else
-          echo "❌ Problème de structure HTML"
+          echo "✅ Taille OK: $LINES lignes"
+        fi
+        
+    - name: 🧪 Valider la structure HTML
+      run: |
+        echo "=== VALIDATION HTML ==="
+        HTML_FILE="src/index.html"
+        
+        # Liste des vérifications
+        CHECKS=(
+          "<!DOCTYPE html>"
+          "<html"
+          "<head>"
+          "<body>"
+          "</html>"
+        )
+        
+        ALL_OK=true
+        for check in "${CHECKS[@]}"; do
+          if grep -q "$check" "$HTML_FILE"; then
+            echo "✅ '$check' présent"
+          else
+            echo "❌ '$check' MANQUANT"
+            ALL_OK=false
+          fi
+        done
+        
+        if [ "$ALL_OK" = false ]; then
+          echo "❌ Structure HTML incomplète"
           exit 1
         fi
         
-        echo "🎉 Validation réussie !"
+        echo "✅ Structure HTML valide"
+        
+    - name: 📦 Créer un build de test
+      run: |
+        echo "=== CRÉATION DU BUILD ==="
+        mkdir -p build-test
+        cp -r src/* build-test/ 2>/dev/null || true
+        
+        echo "📁 Contenu du build:"
+        ls -la build-test/
+        
+    - name: ⬆️ Sauvegarder l'artefact (optionnel)
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: build-test
+        path: build-test/
+        retention-days: 1
+        
+    - name: 🎉 Rapport final
+      if: always()
+      run: |
+        echo "========================================"
+        echo "✅ CI PIPELINE TERMINÉE"
+        echo "========================================"
+        echo "📅 $(date)"
+        echo "🌿 Branche: ${{ github.ref_name }}"
+        echo "🔗 Commit: ${{ github.sha }}"
+        echo "========================================"
