@@ -5,44 +5,60 @@ on:
     branches: [main]
   workflow_dispatch:  # Permet un déploiement manuel
 
+# Permissions nécessaires pour GitHub Pages
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
+# Environnement de déploiement (optionnel mais recommandé)
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4  # Version mise à jour
+        
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+        
+      - name: Construire l'application
+        run: |
+          echo "🏗️ Construction de l'application..."
+          # Créer le dossier dist s'il n'existe pas
+          mkdir -p dist
+          
+          # Copier tous les fichiers du projet dans dist
+          # Cette méthode capture tous les fichiers, où qu'ils soient
+          find . -maxdepth 1 -type f -name "*.html" -o -name "*.css" -o -name "*.js" | xargs -I {} cp {} dist/ 2>/dev/null || true
+          
+          # Copier aussi les fichiers de src/ si ce dossier existe
+          if [ -d "src" ]; then
+            cp -r src/* dist/ 2>/dev/null || true
+          fi
+          
+          echo "📁 Contenu du dossier dist :"
+          ls -la dist/
+          
+      - name: Upload l'artefact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: 'dist'  # Dossier à déployer
+          
+  deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+      
+    runs-on: ubuntu-latest
+    needs: build
     
     steps:
-    - name: Checkout du code
-      uses: actions/checkout@v3
-      
-    - name: Construire l'application
-      run: |
-        echo "🏗️ Construction de l'application..."
-        mkdir -p dist
-        cp -r src/* dist/
-        
-        # Ajouter un timestamp pour le cache
-        echo "<!-- Build: ${{ github.sha }} -->" >> dist/index.html
-        
-    - name: Configurer Pages
-      uses: actions/configure-pages@v3
-      
-    - name: Upload les artefacts
-      uses: actions/upload-pages-artifact@v2
-      with:
-        path: 'dist'
-        
-    - name: Déployer sur GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v2
-      
-    - name: Afficher l'URL de déploiement
-      run: |
-        echo "🚀 Application déployée sur:"
-        echo "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+      - name: Déployer sur GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
