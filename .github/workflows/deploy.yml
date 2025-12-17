@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
-  workflow_dispatch:  # Permet un déploiement manuel
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,53 +19,31 @@ jobs:
         uses: actions/checkout@v4
         
       - name: Setup Pages
-        uses: actions/configure-pages@v4  # Version v4
+        uses: actions/configure-pages@v4
         
       - name: Construire l'application
         run: |
-          echo "🏗️ Construction de l'application..."
-          
-          # D'abord, voir ce qu'on a
-          echo "📁 Structure du projet :"
-          find . -type f -name "*.html" -o -name "*.css" -o -name "*.js" | head -20
+          echo "🏗️ Construction depuis src/..."
           
           # Créer le dossier dist
           mkdir -p dist
           
-          # Méthode SIMPLE : copier TOUT ce qui est nécessaire
-          # 1. Copier index.html s'il est à la racine
-          if [ -f "index.html" ]; then
-            cp index.html dist/
-            echo "✅ index.html copié depuis la racine"
-          fi
-          
-          # 2. Copier depuis src/ si le dossier existe
+          # Copier TOUT le contenu de src/ dans dist/
           if [ -d "src" ]; then
-            cp -r src/* dist/ 2>/dev/null || true
-            echo "✅ Fichiers copiés depuis src/"
+            cp -r src/* dist/
+            echo "✅ Fichiers copiés depuis src/ vers dist/"
+          else
+            echo "❌ ERREUR : Dossier src/ non trouvé !"
+            echo "   Structure actuelle :"
+            ls -la
+            exit 1
           fi
-          
-          # 3. Copier CSS/JS à la racine si présents
-          for file in style.css script.js; do
-            if [ -f "$file" ]; then
-              cp "$file" dist/
-              echo "✅ $file copié depuis la racine"
-            fi
-          done
           
           echo "📁 Contenu final de dist/ :"
           ls -la dist/
           
-          # Vérifier qu'on a bien un index.html dans dist
-          if [ ! -f "dist/index.html" ]; then
-            echo "❌ ERREUR : Aucun index.html trouvé pour le déploiement"
-            echo "   Cherché dans :"
-            find . -name "index.html" -type f
-            exit 1
-          fi
-          
       - name: Upload l'artefact
-        uses: actions/upload-pages-artifact@v3  # Version v3
+        uses: actions/upload-pages-artifact@v3
         with:
           path: 'dist'
           
@@ -80,4 +58,4 @@ jobs:
     steps:
       - name: Déployer sur GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v3  # Version v3
+        uses: actions/deploy-pages@v3
